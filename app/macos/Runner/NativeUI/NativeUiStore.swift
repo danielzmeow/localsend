@@ -1,7 +1,7 @@
 import Foundation
 
 final class NativeUiStore: ObservableObject {
-    @Published var selectedSection: NativeSection = .receive
+    @Published var selectedSection: NativeSection? = .receive
     @Published var localStatus = NativeLocalStatus(
         alias: "Daniel's MacBook",
         address: "192.168.1.42",
@@ -56,7 +56,7 @@ final class NativeUiStore: ObservableObject {
     ]
 }
 
-enum NativeSection: String, CaseIterable, Identifiable {
+enum NativeSection: String, CaseIterable, Hashable, Identifiable {
     case receive = "Receive"
     case send = "Send"
     case settings = "Settings"

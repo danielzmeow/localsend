@@ -19,7 +19,7 @@ enum NativeUiInstaller {
             return nil
         }
 
-        window.isMovableByWindowBackground = true
+        configureWindowChrome(window)
 
         let controller = NSHostingController(rootView: NativeRootView())
         let hostedView = controller.view
@@ -35,5 +35,14 @@ enum NativeUiInstaller {
         ])
 
         return controller
+    }
+
+    static func configureWindowChrome(_ window: NSWindow) {
+        window.title = ""
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = true
+        window.toolbarStyle = .unified
     }
 }
