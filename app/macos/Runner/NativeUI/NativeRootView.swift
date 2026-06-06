@@ -73,12 +73,19 @@ private struct NativeMainPane: View {
     @ObservedObject var store: NativeUiStore
 
     var body: some View {
-        VStack(spacing: 0) {
+        GeometryReader { proxy in
+            let showsTransferPane = proxy.size.width >= 760
+
             HStack(alignment: .top, spacing: 0) {
                 NativeWorkPane(store: store)
-                Divider()
-                NativeTransferPane(store: store)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if showsTransferPane {
+                    Divider()
+                    NativeTransferPane(store: store)
+                }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .toolbar {
             ToolbarItemGroup {
@@ -108,7 +115,6 @@ private struct NativeWorkPane: View {
             }
             .padding(22)
         }
-        .frame(minWidth: 430)
     }
 }
 
@@ -118,7 +124,7 @@ private struct NativeReceiveStatusView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Ready To Receive", symbolName: "dot.radiowaves.left.and.right")
-            HStack(spacing: 14) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 14)], spacing: 14) {
                 StatusPill(title: "Alias", value: status.alias, symbolName: "person.crop.circle")
                 StatusPill(title: "Address", value: status.address, symbolName: "network")
                 StatusPill(title: "Mode", value: status.secure ? "HTTPS" : "HTTP", symbolName: status.secure ? "lock" : "lock.open")
