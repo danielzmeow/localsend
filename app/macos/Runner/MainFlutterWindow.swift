@@ -1,9 +1,12 @@
 import Cocoa
 import FlutterMacOS
+import SwiftUI
 import window_manager
 import bitsdojo_window_macos  // used to make custom window bars on macOS (or any desktop operating system for that matter)
 
 class MainFlutterWindow: BitsdojoWindow {
+  private var nativeUiHostingController: NSHostingController<NativeRootView>?
+
   // just following intructions from https://pub.dev/packages/bitsdojo_window
   override func bitsdojo_window_configure() -> UInt {
     return BDW_CUSTOM_FRAME | BDW_HIDE_ON_STARTUP
@@ -19,5 +22,7 @@ class MainFlutterWindow: BitsdojoWindow {
     hiddenWindowAtLaunch()  
 
     super.awakeFromNib()
+
+    nativeUiHostingController = NativeUiInstaller.install(in: self)
   }
 }
