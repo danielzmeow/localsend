@@ -34,6 +34,8 @@
 		05C0A0022D00000100C0A001 /* NativeUiInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05C0A0062D00000100C0A001 /* NativeUiInstaller.swift */; };
 		05C0A0032D00000100C0A001 /* NativeUiModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05C0A0072D00000100C0A001 /* NativeUiModels.swift */; };
 		05C0A0042D00000100C0A001 /* NativeUiStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05C0A0082D00000100C0A001 /* NativeUiStore.swift */; };
+		05C0A00B2D00000100C0A001 /* NativeSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05C0A0152D00000100C0A001 /* NativeSidebar.swift */; };
+		05C0A00C2D00000100C0A001 /* NativeReceivePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05C0A0162D00000100C0A001 /* NativeReceivePage.swift */; };
 		05CD1E642C98F2220044F24D /* DockProgress in Frameworks */ = {isa = PBXBuildFile; productRef = 05CD1E632C98F2220044F24D /* DockProgress */; };
 		05F86B372C9B80BD000EB4BA /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 05F86B362C9B80BD000EB4BA /* LaunchAtLogin */; };
 		0F663CE30FCD07225E44A808 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F8CCFF0FAB783405F067709 /* Pods_Runner.framework */; };
@@ -100,6 +102,8 @@
 		05C0A0062D00000100C0A001 /* NativeUiInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeUiInstaller.swift; sourceTree = "<group>"; };
 		05C0A0072D00000100C0A001 /* NativeUiModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeUiModels.swift; sourceTree = "<group>"; };
 		05C0A0082D00000100C0A001 /* NativeUiStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeUiStore.swift; sourceTree = "<group>"; };
+		05C0A0152D00000100C0A001 /* NativeSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSidebar.swift; sourceTree = "<group>"; };
+		05C0A0162D00000100C0A001 /* NativeReceivePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeReceivePage.swift; sourceTree = "<group>"; };
 		2F8CCFF0FAB783405F067709 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		333000ED22D3DE5D00554162 /* Warnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Warnings.xcconfig; sourceTree = "<group>"; };
 		335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GeneratedPluginRegistrant.swift; sourceTree = "<group>"; };
@@ -172,6 +176,8 @@
 				05C0A0072D00000100C0A001 /* NativeUiModels.swift */,
 				05C0A0082D00000100C0A001 /* NativeUiStore.swift */,
 				05C0A0052D00000100C0A001 /* NativeRootView.swift */,
+				05C0A0152D00000100C0A001 /* NativeSidebar.swift */,
+				05C0A0162D00000100C0A001 /* NativeReceivePage.swift */,
 				05C0A0062D00000100C0A001 /* NativeUiInstaller.swift */,
 			);
 			path = NativeUI;
@@ -498,6 +504,8 @@
 				05C0A0032D00000100C0A001 /* NativeUiModels.swift in Sources */,
 				05C0A0042D00000100C0A001 /* NativeUiStore.swift in Sources */,
 				05C0A0012D00000100C0A001 /* NativeRootView.swift in Sources */,
+				05C0A00B2D00000100C0A001 /* NativeSidebar.swift in Sources */,
+				05C0A00C2D00000100C0A001 /* NativeReceivePage.swift in Sources */,
 				05C0A0022D00000100C0A001 /* NativeUiInstaller.swift in Sources */,
 				05251DB32EA03617008503F6 /* Utilities.swift in Sources */,
 				053DADFD2C89F83400C3B4DE /* Shared.swift in Sources */,

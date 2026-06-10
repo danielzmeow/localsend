@@ -19,10 +19,12 @@ enum NativeUiInstaller {
             return nil
         }
 
-        configureWindowChrome(window)
+        restoreSystemWindowChrome(window)
 
         let controller = NSHostingController(rootView: NativeRootView())
         let hostedView = controller.view
+        hostedView.wantsLayer = true
+        hostedView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         hostedView.translatesAutoresizingMaskIntoConstraints = false
         hostedView.autoresizingMask = [.width, .height]
         contentView.addSubview(hostedView)
@@ -37,12 +39,12 @@ enum NativeUiInstaller {
         return controller
     }
 
-    static func configureWindowChrome(_ window: NSWindow) {
-        window.title = ""
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.styleMask.insert(.fullSizeContentView)
-        window.isMovableByWindowBackground = true
-        window.toolbarStyle = .unified
+    static func restoreSystemWindowChrome(_ window: NSWindow) {
+        window.title = "LocalSend"
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.styleMask.remove(.fullSizeContentView)
+        window.isMovableByWindowBackground = false
+        window.toolbarStyle = .automatic
     }
 }
