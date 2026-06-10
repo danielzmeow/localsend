@@ -17,12 +17,36 @@ enum NativeQuickSaveMode: String, CaseIterable, Hashable, Identifiable {
             return "On"
         }
     }
+
+    var explanation: String {
+        switch self {
+        case .off:
+            return "Ask before saving incoming files."
+        case .favorites:
+            return "Automatically save files from favorite devices."
+        case .on:
+            return "Automatically save files from any device."
+        }
+    }
 }
 
 struct NativeLocalStatus {
     let alias: String
-    let shortCode: String
-    let address: String
+    let platformName: String
+    let platformDetail: String
+    let platformSymbolName: String
+    let localAddresses: [String]
     let port: Int
     let secure: Bool
+
+    var localIds: [String] {
+        localAddresses.map { address in
+            let suffix = address.split(separator: ".").last.map(String.init) ?? address
+            return "#\(suffix)"
+        }
+    }
+
+    var primaryAddress: String {
+        localAddresses.first ?? "-"
+    }
 }

@@ -4,8 +4,13 @@ final class NativeUiStore: ObservableObject {
     @Published var selectedSection: NativeSection? = .receive
     @Published var localStatus = NativeLocalStatus(
         alias: "Kind Cherry",
-        shortCode: "#16 #1",
-        address: "192.168.1.42",
+        platformName: "macOS",
+        platformDetail: "MacBook Pro",
+        platformSymbolName: "macbook",
+        localAddresses: [
+            "192.168.1.16",
+            "192.168.1.1",
+        ],
         port: 53317,
         secure: false
     )

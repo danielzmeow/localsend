@@ -29,7 +29,7 @@ class AppDelegate: FlutterAppDelegate {
     }
     
     override func applicationDidFinishLaunching(_ notification: Notification) {
-        let controller = mainFlutterWindow?.contentViewController as! FlutterViewController
+        let controller = (mainFlutterWindow as! MainFlutterWindow).flutterViewController!
         channel = FlutterMethodChannel(name: "main-delegate-channel", binaryMessenger: controller.engine.binaryMessenger)
         channel?.setMethodCallHandler(handleFlutterCall)
         
