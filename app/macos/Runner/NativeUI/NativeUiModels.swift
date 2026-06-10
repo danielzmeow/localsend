@@ -18,14 +18,25 @@ enum NativeQuickSaveMode: String, CaseIterable, Hashable, Identifiable {
         }
     }
 
-    var explanation: String {
+    var symbolName: String {
         switch self {
         case .off:
-            return "Ask before saving incoming files."
+            return "xmark"
         case .favorites:
-            return "Automatically save files from favorite devices."
+            return "star.fill"
         case .on:
-            return "Automatically save files from any device."
+            return "checkmark"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .off:
+            return "Files will not be saved automatically. You'll be prompted before each transfer."
+        case .favorites:
+            return "Files from favorite devices are saved automatically without a prompt."
+        case .on:
+            return "All incoming files are saved automatically without any confirmation."
         }
     }
 }
