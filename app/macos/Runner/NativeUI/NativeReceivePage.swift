@@ -4,19 +4,29 @@ struct NativeReceivePage: View {
     @ObservedObject var store: NativeUiStore
 
     var body: some View {
+        let receiveState = store.receiveState
+
         ScrollView {
             VStack(spacing: 0) {
                 Spacer(minLength: 48)
 
                 HStack(alignment: .top, spacing: 20) {
                     VStack(spacing: 20) {
-                        DeviceIdentityHeader(status: store.localStatus)
-                        QuickSaveGroup(selection: $store.quickSaveMode)
+                        DeviceIdentityHeader(state: receiveState)
+                        ReceiveActivityGroup(
+                            activity: receiveState.activity,
+                            quickSaveSelection: quickSaveModeBinding,
+                            acceptIncomingRequest: store.acceptIncomingRequest,
+                            declineIncomingRequest: store.declineIncomingRequest,
+                            cancelActiveTransfer: store.cancelActiveTransfer,
+                            completeActiveTransfer: store.completeActiveTransfer,
+                            dismissCompletedTransfer: store.dismissCompletedTransfer
+                        )
                             .frame(maxHeight: .infinity)
                     }
                     .frame(maxHeight: .infinity)
 
-                    NetworkIdentityGroup(status: store.localStatus)
+                    NetworkIdentityGroup(status: receiveState.localStatus)
                         .frame(width: 260)
                 }
                 .frame(width: 720, height: 360)
@@ -27,12 +37,23 @@ struct NativeReceivePage: View {
         }
         .navigationTitle("Receive")
     }
+
+    private var quickSaveModeBinding: Binding<NativeQuickSaveMode> {
+        Binding(
+            get: { store.receiveState.quickSaveMode },
+            set: { store.setQuickSaveMode($0) }
+        )
+    }
 }
 
 // MARK: - Device Identity Header
 
 private struct DeviceIdentityHeader: View {
-    let status: NativeLocalStatus
+    let state: NativeReceiveState
+
+    private var status: NativeLocalStatus {
+        state.localStatus
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
@@ -51,19 +72,12 @@ private struct DeviceIdentityHeader: View {
             // Name & platform
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("Receiving as")
+                    Text(state.availability.title)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
                     // Online indicator
-                    ZStack {
-                        Circle()
-                            .fill(Color.green.opacity(0.25))
-                            .frame(width: 13, height: 13)
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 7, height: 7)
-                    }
+                    AvailabilityIndicator(availability: state.availability)
                 }
 
                 Text(status.alias)
@@ -77,7 +91,7 @@ private struct DeviceIdentityHeader: View {
                     .foregroundColor(.secondary)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Receiving as \(status.alias), \(status.platformDetail)")
+            .accessibilityLabel("\(state.availability.title) \(status.alias), \(status.platformDetail)")
 
             Spacer(minLength: 0)
         }
@@ -90,6 +104,33 @@ private struct DeviceIdentityHeader: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.primary.opacity(0.06), lineWidth: 1)
         )
+    }
+}
+
+private struct AvailabilityIndicator: View {
+    let availability: NativeReceiveAvailability
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.25))
+                .frame(width: 13, height: 13)
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var color: Color {
+        switch availability {
+        case .ready:
+            return .green
+        case .offline:
+            return .secondary
+        case .noNetwork:
+            return .orange
+        }
     }
 }
 
@@ -240,6 +281,228 @@ private struct QuickSaveGroup: View {
     }
 }
 
+// MARK: - Receive Activity
+
+private struct ReceiveActivityGroup: View {
+    let activity: NativeReceiveActivity
+    @Binding var quickSaveSelection: NativeQuickSaveMode
+    let acceptIncomingRequest: () -> Void
+    let declineIncomingRequest: () -> Void
+    let cancelActiveTransfer: () -> Void
+    let completeActiveTransfer: () -> Void
+    let dismissCompletedTransfer: () -> Void
+
+    var body: some View {
+        switch activity {
+        case .idle:
+            QuickSaveGroup(selection: $quickSaveSelection)
+        case .incoming(let request):
+            IncomingRequestCard(
+                request: request,
+                accept: acceptIncomingRequest,
+                decline: declineIncomingRequest
+            )
+        case .receiving(let transfer):
+            ActiveTransferCard(
+                transfer: transfer,
+                cancel: cancelActiveTransfer,
+                finishPreview: completeActiveTransfer
+            )
+        case .completed(let transfer):
+            CompletedTransferCard(
+                transfer: transfer,
+                done: dismissCompletedTransfer
+            )
+        }
+    }
+}
+
+private struct IncomingRequestCard: View {
+    let request: NativeIncomingReceiveRequest
+    let accept: () -> Void
+    let decline: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TransferDeviceHeader(
+                sender: request.sender,
+                title: "Wants to send",
+                subtitle: "\(request.fileCountText) · \(request.totalSize)"
+            )
+
+            ReceiveFilePreviewList(files: request.files)
+
+            HStack(spacing: 10) {
+                Button("Decline", action: decline)
+                    .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Accept", action: accept)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .activityCardBackground()
+    }
+}
+
+private struct ActiveTransferCard: View {
+    let transfer: NativeActiveReceiveTransfer
+    let cancel: () -> Void
+    let finishPreview: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TransferDeviceHeader(
+                sender: transfer.sender,
+                title: "Receiving",
+                subtitle: transfer.savedAutomatically ? "Auto-saving from favorite device" : "Saving after approval"
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(transfer.currentFileName)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Text(transfer.progressText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(.secondary)
+                }
+
+                ProgressView(value: transfer.progress)
+            }
+
+            ReceiveFilePreviewList(files: transfer.files)
+
+            HStack {
+                Button("Cancel", action: cancel)
+                Spacer()
+                Button("Finish Preview", action: finishPreview)
+            }
+        }
+        .padding(20)
+        .activityCardBackground()
+    }
+}
+
+private struct CompletedTransferCard: View {
+    let transfer: NativeCompletedReceiveTransfer
+    let done: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TransferDeviceHeader(
+                sender: transfer.sender,
+                title: transfer.summaryText,
+                subtitle: "\(transfer.totalSize) from \(transfer.sender.alias)"
+            )
+
+            ReceiveFilePreviewList(files: transfer.files)
+
+            HStack {
+                Button("Reveal in Finder") {
+                }
+
+                Spacer()
+
+                Button("Done", action: done)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .activityCardBackground()
+    }
+}
+
+private struct TransferDeviceHeader: View {
+    let sender: NativeRemoteDevice
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.10))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: sender.platformSymbolName)
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundColor(.accentColor)
+            }
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(sender.alias)
+                    .font(.headline)
+                    .lineLimit(1)
+
+                Text("\(title) · \(subtitle)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            if sender.isFavorite {
+                Image(systemName: "star.fill")
+                    .foregroundColor(.yellow)
+                    .accessibilityLabel("Favorite device")
+            }
+        }
+    }
+}
+
+private struct ReceiveFilePreviewList: View {
+    let files: [NativeReceiveFile]
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(files.prefix(3)) { file in
+                HStack(spacing: 10) {
+                    Image(systemName: "doc")
+                        .foregroundColor(.secondary)
+                        .frame(width: 18)
+
+                    Text(file.name)
+                        .font(.subheadline)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Text(file.detail)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+    }
+}
+
+private extension View {
+    func activityCardBackground() -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+            )
+    }
+}
+
 private struct QuickSaveModeCard: View {
     let mode: NativeQuickSaveMode
     let isSelected: Bool
@@ -286,8 +549,26 @@ private struct QuickSaveModeCard: View {
 #if DEBUG
 struct NativeReceivePage_Previews: PreviewProvider {
     static var previews: some View {
-        NativeReceivePage(store: NativeUiStore())
-            .frame(width: 820, height: 600)
+        Group {
+            NativeReceivePage(store: NativeUiStore(receiveState: .preview))
+                .previewDisplayName("Ready")
+
+            NativeReceivePage(store: NativeUiStore(receiveState: .offlinePreview))
+                .previewDisplayName("Offline")
+
+            NativeReceivePage(store: NativeUiStore(receiveState: .noNetworkPreview))
+                .previewDisplayName("No Network")
+
+            NativeReceivePage(store: NativeUiStore(receiveState: .incomingPreview))
+                .previewDisplayName("Incoming Request")
+
+            NativeReceivePage(store: NativeUiStore(receiveState: .receivingPreview))
+                .previewDisplayName("Receiving")
+
+            NativeReceivePage(store: NativeUiStore(receiveState: .completedPreview))
+                .previewDisplayName("Completed")
+        }
+        .frame(width: 820, height: 600)
     }
 }
 #endif
