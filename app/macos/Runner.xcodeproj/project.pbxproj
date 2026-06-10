@@ -159,17 +159,6 @@
 			path = ShareExtension;
 			sourceTree = "<group>";
 		};
-		33BA886A226E78AF003329D5 /* Configs */ = {
-			isa = PBXGroup;
-			children = (
-				33E5194F232828860026EE4D /* AppInfo.xcconfig */,
-				9740EEB21CF90195004384FC /* Debug.xcconfig */,
-				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
-				333000ED22D3DE5D00554162 /* Warnings.xcconfig */,
-			);
-			path = Configs;
-			sourceTree = "<group>";
-		};
 		05C0A0092D00000100C0A001 /* NativeUI */ = {
 			isa = PBXGroup;
 			children = (
@@ -181,6 +170,17 @@
 				05C0A0062D00000100C0A001 /* NativeUiInstaller.swift */,
 			);
 			path = NativeUI;
+			sourceTree = "<group>";
+		};
+		33BA886A226E78AF003329D5 /* Configs */ = {
+			isa = PBXGroup;
+			children = (
+				33E5194F232828860026EE4D /* AppInfo.xcconfig */,
+				9740EEB21CF90195004384FC /* Debug.xcconfig */,
+				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
+				333000ED22D3DE5D00554162 /* Warnings.xcconfig */,
+			);
+			path = Configs;
 			sourceTree = "<group>";
 		};
 		33CC10E42044A3C60003C045 = {
