@@ -7,33 +7,22 @@ struct NativeReceivePage: View {
         let receiveState = store.receiveState
 
         ScrollView {
-            VStack(spacing: 0) {
-                Spacer(minLength: 48)
-
-                HStack(alignment: .top, spacing: 20) {
-                    VStack(spacing: 20) {
-                        DeviceIdentityHeader(state: receiveState)
-                        ReceiveActivityGroup(
-                            activity: receiveState.activity,
-                            quickSaveSelection: quickSaveModeBinding,
-                            acceptIncomingRequest: store.acceptIncomingRequest,
-                            declineIncomingRequest: store.declineIncomingRequest,
-                            cancelActiveTransfer: store.cancelActiveTransfer,
-                            completeActiveTransfer: store.completeActiveTransfer,
-                            dismissCompletedTransfer: store.dismissCompletedTransfer
-                        )
-                            .frame(maxHeight: .infinity)
-                    }
-                    .frame(maxHeight: .infinity)
-
+            VStack(spacing: 40) {
+                VStack(alignment: .center, spacing: 20) {
+                    DeviceIdentityHeader(state: receiveState)
+                    ReceiveActivityGroup(
+                        activity: receiveState.activity,
+                        quickSaveSelection: quickSaveModeBinding,
+                        acceptIncomingRequest: store.acceptIncomingRequest,
+                        declineIncomingRequest: store.declineIncomingRequest,
+                        cancelActiveTransfer: store.cancelActiveTransfer,
+                        completeActiveTransfer: store.completeActiveTransfer,
+                        dismissCompletedTransfer: store.dismissCompletedTransfer
+                    )
                     NetworkIdentityGroup(status: receiveState.localStatus)
-                        .frame(width: 260)
                 }
-                .frame(width: 720, height: 360)
-
-                Spacer(minLength: 48)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: 600)
         }
         .navigationTitle("Receive")
     }
@@ -81,14 +70,14 @@ private struct DeviceIdentityHeader: View {
                 }
 
                 Text(status.alias)
-                    .font(.system(.title, design: .rounded))
+                    .font(.system(.title2, design: .rounded))
                     .fontWeight(.semibold)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
 
                 Text(status.platformDetail)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(state.availability.title) \(status.alias), \(status.platformDetail)")
@@ -99,10 +88,6 @@ private struct DeviceIdentityHeader: View {
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(NSColor.controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
         )
     }
 }
@@ -145,9 +130,16 @@ private struct NetworkIdentityGroup: View {
             Label("Network Identity", systemImage: "antenna.radiowaves.left.and.right")
                 .font(.headline)
                 .foregroundColor(.secondary)
+            
+            let columns = [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ]
 
             // Stacked info cards
-            VStack(spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 NetworkInfoCard(
                     title: "Local IDs",
                     value: status.localIds.joined(separator: "  "),
@@ -175,11 +167,7 @@ private struct NetworkIdentityGroup: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                .fill(Color(nsColor: .controlBackgroundColor))
         )
     }
 }
@@ -216,7 +204,7 @@ private struct NetworkInfoCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color(NSColor.windowBackgroundColor))
+                .fill(Color(nsColor: .windowBackgroundColor))
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title): \(value)")
@@ -230,7 +218,6 @@ private struct QuickSaveGroup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
             HStack {
                 Label("Quick Save", systemImage: "square.and.arrow.down")
                     .font(.headline)
@@ -238,7 +225,6 @@ private struct QuickSaveGroup: View {
 
                 Spacer()
 
-                // Current state badge
                 Text(selection.title)
                     .font(.caption.weight(.medium))
                     .foregroundColor(selection == .off ? .secondary : .accentColor)
@@ -252,7 +238,6 @@ private struct QuickSaveGroup: View {
                     )
             }
 
-            // Mode picker cards
             HStack(spacing: 10) {
                 ForEach(NativeQuickSaveMode.allCases) { mode in
                     QuickSaveModeCard(mode: mode, isSelected: selection == mode) {
@@ -263,7 +248,6 @@ private struct QuickSaveGroup: View {
                 }
             }
 
-            // Helper text
             Text(selection.description)
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -272,11 +256,7 @@ private struct QuickSaveGroup: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                .fill(Color(nsColor: .controlBackgroundColor))
         )
     }
 }
@@ -544,31 +524,34 @@ private struct QuickSaveModeCard: View {
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
-#if DEBUG
-struct NativeReceivePage_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            NativeReceivePage(store: NativeUiStore(receiveState: .preview))
-                .previewDisplayName("Ready")
-
-            NativeReceivePage(store: NativeUiStore(receiveState: .offlinePreview))
-                .previewDisplayName("Offline")
-
-            NativeReceivePage(store: NativeUiStore(receiveState: .noNetworkPreview))
-                .previewDisplayName("No Network")
-
-            NativeReceivePage(store: NativeUiStore(receiveState: .incomingPreview))
-                .previewDisplayName("Incoming Request")
-
-            NativeReceivePage(store: NativeUiStore(receiveState: .receivingPreview))
-                .previewDisplayName("Receiving")
-
-            NativeReceivePage(store: NativeUiStore(receiveState: .completedPreview))
-                .previewDisplayName("Completed")
-        }
+#Preview("Ready") {
+    NativeReceivePage(store: NativeUiStore(receiveState: .preview))
         .frame(width: 820, height: 600)
-    }
 }
-#endif
+
+#Preview("Offline") {
+    NativeReceivePage(store: NativeUiStore(receiveState: .offlinePreview))
+        .frame(width: 820, height: 600)
+}
+
+#Preview("No Network") {
+    NativeReceivePage(store: NativeUiStore(receiveState: .noNetworkPreview))
+        .frame(width: 820, height: 600)
+}
+
+#Preview("Incoming Request") {
+    NativeReceivePage(store: NativeUiStore(receiveState: .incomingPreview))
+        .frame(width: 820, height: 600)
+}
+
+#Preview("Receiving") {
+    NativeReceivePage(store: NativeUiStore(receiveState: .receivingPreview))
+        .frame(width: 820, height: 600)
+}
+
+#Preview("Completed") {
+    NativeReceivePage(store: NativeUiStore(receiveState: .completedPreview))
+        .frame(width: 820, height: 600)
+}
