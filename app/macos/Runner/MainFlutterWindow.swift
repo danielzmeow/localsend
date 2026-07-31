@@ -6,7 +6,7 @@ import bitsdojo_window_macos
 
 class MainFlutterWindow: BitsdojoWindow {
   private(set) var flutterViewController: FlutterViewController!
-  private var nativeUiHostingController: NSHostingController<NativeRootView>?
+  private var nativeUiSession: NativeUiSession?
 
   override func bitsdojo_window_configure() -> UInt {
     if NativeUiInstaller.isEnabled() {
@@ -30,8 +30,11 @@ class MainFlutterWindow: BitsdojoWindow {
 
     super.awakeFromNib()
 
-    nativeUiHostingController = NativeUiInstaller.install(in: self)
-    if nativeUiHostingController != nil {
+    nativeUiSession = NativeUiInstaller.install(
+      in: self,
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    if nativeUiSession != nil {
       makeKeyAndOrderFront(nil)
       NSApp.activate(ignoringOtherApps: true)
     }

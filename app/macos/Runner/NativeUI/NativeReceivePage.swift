@@ -4,38 +4,66 @@ struct NativeReceivePage: View {
     @ObservedObject var store: NativeUiStore
 
     var body: some View {
-        let receiveState = store.receiveState
-
-        ScrollView {
-            VStack(spacing: 40) {
-                VStack(alignment: .center, spacing: 20) {
-                    DeviceIdentityHeader(state: receiveState)
-                    ReceiveActivityGroup(
-                        activity: receiveState.activity,
-                        quickSaveSelection: quickSaveModeBinding,
-                        acceptIncomingRequest: store.acceptIncomingRequest,
-                        declineIncomingRequest: store.declineIncomingRequest,
-                        cancelActiveTransfer: store.cancelActiveTransfer,
-                        completeActiveTransfer: store.completeActiveTransfer,
-                        dismissCompletedTransfer: store.dismissCompletedTransfer
-                    )
-                    NetworkIdentityGroup(status: receiveState.localStatus)
+        Group {
+            if let receiveState = store.receiveState {
+                ScrollView {
+                    VStack(alignment: .center, spacing: 20) {
+                        DeviceIdentityHeader(state: receiveState)
+                        NativeReceiveMilestoneNotice()
+                        NetworkIdentityGroup(status: receiveState.localStatus)
+                    }
+                    .frame(maxWidth: 600)
+                    .padding(24)
                 }
+            } else {
+                NativeReceiveBridgeState(message: store.bridgeErrorMessage)
             }
-            .frame(maxWidth: 600)
         }
         .navigationTitle("Receive")
     }
+}
 
-    private var quickSaveModeBinding: Binding<NativeQuickSaveMode> {
-        Binding(
-            get: { store.receiveState.quickSaveMode },
-            set: { store.setQuickSaveMode($0) }
-        )
+private struct NativeReceiveBridgeState: View {
+    let message: String?
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if message == nil {
+                ProgressView()
+                    .controlSize(.large)
+            } else {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 42, weight: .light))
+                    .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
+            }
+
+            Text(message == nil ? "Starting LocalSend" : "Native UI Unavailable")
+                .font(.title2.weight(.semibold))
+
+            Text(message ?? "Waiting for the Flutter runtime to publish local receive status.")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 420)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
     }
 }
 
-// MARK: - Device Identity Header
+private struct NativeReceiveMilestoneNotice: View {
+    var body: some View {
+        Label(
+            "Native receive controls will be connected in a later milestone. The LocalSend runtime remains active.",
+            systemImage: "info.circle"
+        )
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
 
 private struct DeviceIdentityHeader: View {
     let state: NativeReceiveState
@@ -46,7 +74,6 @@ private struct DeviceIdentityHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
-            // Device icon
             ZStack {
                 Circle()
                     .fill(Color.accentColor.opacity(0.10))
@@ -58,14 +85,12 @@ private struct DeviceIdentityHeader: View {
             }
             .accessibilityHidden(true)
 
-            // Name & platform
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(state.availability.title)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    // Online indicator
                     AvailabilityIndicator(availability: state.availability)
                 }
 
@@ -87,7 +112,7 @@ private struct DeviceIdentityHeader: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor))
+                .fill(Color(nsColor: .controlBackgroundColor))
         )
     }
 }
@@ -119,26 +144,16 @@ private struct AvailabilityIndicator: View {
     }
 }
 
-// MARK: - Network Identity Group
-
 private struct NetworkIdentityGroup: View {
     let status: NativeLocalStatus
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
             Label("Network Identity", systemImage: "antenna.radiowaves.left.and.right")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            
-            let columns = [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ]
 
-            // Stacked info cards
+            let columns = Array(repeating: GridItem(.flexible()), count: 4)
             LazyVGrid(columns: columns, spacing: 12) {
                 NetworkInfoCard(
                     title: "Local IDs",
@@ -180,7 +195,6 @@ private struct NetworkInfoCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Icon + title row
             HStack(spacing: 6) {
                 Image(systemName: systemImage)
                     .font(.footnote.weight(.medium))
@@ -192,7 +206,6 @@ private struct NetworkInfoCard: View {
                     .foregroundColor(.secondary)
             }
 
-            // Value
             Text(value)
                 .font(.system(.body, design: .rounded).weight(.medium))
                 .foregroundColor(valueColor)
@@ -211,347 +224,12 @@ private struct NetworkInfoCard: View {
     }
 }
 
-// MARK: - Quick Save Group
-
-private struct QuickSaveGroup: View {
-    @Binding var selection: NativeQuickSaveMode
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Quick Save", systemImage: "square.and.arrow.down")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-
-                Spacer()
-
-                Text(selection.title)
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(selection == .off ? .secondary : .accentColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(selection == .off
-                                  ? Color.secondary.opacity(0.12)
-                                  : Color.accentColor.opacity(0.12))
-                    )
-            }
-
-            HStack(spacing: 10) {
-                ForEach(NativeQuickSaveMode.allCases) { mode in
-                    QuickSaveModeCard(mode: mode, isSelected: selection == mode) {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selection = mode
-                        }
-                    }
-                }
-            }
-
-            Text(selection.description)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-    }
-}
-
-// MARK: - Receive Activity
-
-private struct ReceiveActivityGroup: View {
-    let activity: NativeReceiveActivity
-    @Binding var quickSaveSelection: NativeQuickSaveMode
-    let acceptIncomingRequest: () -> Void
-    let declineIncomingRequest: () -> Void
-    let cancelActiveTransfer: () -> Void
-    let completeActiveTransfer: () -> Void
-    let dismissCompletedTransfer: () -> Void
-
-    var body: some View {
-        switch activity {
-        case .idle:
-            QuickSaveGroup(selection: $quickSaveSelection)
-        case .incoming(let request):
-            IncomingRequestCard(
-                request: request,
-                accept: acceptIncomingRequest,
-                decline: declineIncomingRequest
-            )
-        case .receiving(let transfer):
-            ActiveTransferCard(
-                transfer: transfer,
-                cancel: cancelActiveTransfer,
-                finishPreview: completeActiveTransfer
-            )
-        case .completed(let transfer):
-            CompletedTransferCard(
-                transfer: transfer,
-                done: dismissCompletedTransfer
-            )
-        }
-    }
-}
-
-private struct IncomingRequestCard: View {
-    let request: NativeIncomingReceiveRequest
-    let accept: () -> Void
-    let decline: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            TransferDeviceHeader(
-                sender: request.sender,
-                title: "Wants to send",
-                subtitle: "\(request.fileCountText) · \(request.totalSize)"
-            )
-
-            ReceiveFilePreviewList(files: request.files)
-
-            HStack(spacing: 10) {
-                Button("Decline", action: decline)
-                    .keyboardShortcut(.cancelAction)
-
-                Spacer()
-
-                Button("Accept", action: accept)
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
-        .activityCardBackground()
-    }
-}
-
-private struct ActiveTransferCard: View {
-    let transfer: NativeActiveReceiveTransfer
-    let cancel: () -> Void
-    let finishPreview: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            TransferDeviceHeader(
-                sender: transfer.sender,
-                title: "Receiving",
-                subtitle: transfer.savedAutomatically ? "Auto-saving from favorite device" : "Saving after approval"
-            )
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(transfer.currentFileName)
-                        .font(.subheadline.weight(.medium))
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    Text(transfer.progressText)
-                        .font(.caption.monospacedDigit())
-                        .foregroundColor(.secondary)
-                }
-
-                ProgressView(value: transfer.progress)
-            }
-
-            ReceiveFilePreviewList(files: transfer.files)
-
-            HStack {
-                Button("Cancel", action: cancel)
-                Spacer()
-                Button("Finish Preview", action: finishPreview)
-            }
-        }
-        .padding(20)
-        .activityCardBackground()
-    }
-}
-
-private struct CompletedTransferCard: View {
-    let transfer: NativeCompletedReceiveTransfer
-    let done: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            TransferDeviceHeader(
-                sender: transfer.sender,
-                title: transfer.summaryText,
-                subtitle: "\(transfer.totalSize) from \(transfer.sender.alias)"
-            )
-
-            ReceiveFilePreviewList(files: transfer.files)
-
-            HStack {
-                Button("Reveal in Finder") {
-                }
-
-                Spacer()
-
-                Button("Done", action: done)
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
-        .activityCardBackground()
-    }
-}
-
-private struct TransferDeviceHeader: View {
-    let sender: NativeRemoteDevice
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(0.10))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: sender.platformSymbolName)
-                    .font(.system(size: 20, weight: .regular))
-                    .foregroundColor(.accentColor)
-            }
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(sender.alias)
-                    .font(.headline)
-                    .lineLimit(1)
-
-                Text("\(title) · \(subtitle)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 0)
-
-            if sender.isFavorite {
-                Image(systemName: "star.fill")
-                    .foregroundColor(.yellow)
-                    .accessibilityLabel("Favorite device")
-            }
-        }
-    }
-}
-
-private struct ReceiveFilePreviewList: View {
-    let files: [NativeReceiveFile]
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ForEach(files.prefix(3)) { file in
-                HStack(spacing: 10) {
-                    Image(systemName: "doc")
-                        .foregroundColor(.secondary)
-                        .frame(width: 18)
-
-                    Text(file.name)
-                        .font(.subheadline)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    Text(file.detail)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color(NSColor.windowBackgroundColor))
-        )
-    }
-}
-
-private extension View {
-    func activityCardBackground() -> some View {
-        self
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(NSColor.controlBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-            )
-    }
-}
-
-private struct QuickSaveModeCard: View {
-    let mode: NativeQuickSaveMode
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? Color.accentColor : Color.secondary.opacity(0.10))
-                        .frame(width: 36, height: 36)
-
-                    Image(systemName: mode.symbolName)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(isSelected ? .white : .secondary)
-                }
-
-                Text(mode.title)
-                    .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .primary : .secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(isSelected
-                          ? Color.accentColor.opacity(0.08)
-                          : Color(NSColor.windowBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(isSelected ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.08), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(mode.title)
-        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
-    }
-}
-
-// MARK: - Previews
-
 #Preview("Ready") {
-    NativeReceivePage(store: NativeUiStore(receiveState: .preview))
-        .frame(width: 820, height: 600)
-}
-
-#Preview("Offline") {
-    NativeReceivePage(store: NativeUiStore(receiveState: .offlinePreview))
+    NativeReceivePage(store: .receivePreview)
         .frame(width: 820, height: 600)
 }
 
 #Preview("No Network") {
-    NativeReceivePage(store: NativeUiStore(receiveState: .noNetworkPreview))
-        .frame(width: 820, height: 600)
-}
-
-#Preview("Incoming Request") {
-    NativeReceivePage(store: NativeUiStore(receiveState: .incomingPreview))
-        .frame(width: 820, height: 600)
-}
-
-#Preview("Receiving") {
-    NativeReceivePage(store: NativeUiStore(receiveState: .receivingPreview))
-        .frame(width: 820, height: 600)
-}
-
-#Preview("Completed") {
-    NativeReceivePage(store: NativeUiStore(receiveState: .completedPreview))
+    NativeReceivePage(store: .noNetworkPreview)
         .frame(width: 820, height: 600)
 }

@@ -1,4 +1,5 @@
 import Cocoa
+import FlutterMacOS
 import SwiftUI
 
 enum NativeUiInstaller {
@@ -14,17 +15,18 @@ enum NativeUiInstaller {
         return true
     }
 
-    static func install(in window: NSWindow) -> NSHostingController<NativeRootView>? {
+    @MainActor
+    static func install(in window: NSWindow, binaryMessenger: FlutterBinaryMessenger) -> NativeUiSession? {
         guard isEnabled() else {
             return nil
         }
 
         restoreSystemWindowChrome(window)
 
-        let controller = NSHostingController(rootView: NativeRootView())
-        window.contentViewController = controller
+        let session = NativeUiSession(binaryMessenger: binaryMessenger)
+        window.contentViewController = session.hostingController
 
-        return controller
+        return session
     }
 
     static func restoreSystemWindowChrome(_ window: NSWindow) {

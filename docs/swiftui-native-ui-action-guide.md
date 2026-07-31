@@ -108,23 +108,29 @@ Dart:
 
 - `app/lib/native_ui/native_ui_bridge.dart`
 - `app/lib/native_ui/native_ui_snapshot.dart`
-- `app/lib/native_ui/native_ui_commands.dart`
 
 ## Snapshot Contract
 
 The SwiftUI side should receive plain JSON-compatible snapshots. Avoid passing
 Dart objects, binary file contents, streams, or generated mapper objects.
 
-Minimum first snapshot:
+Version 1 snapshot:
 
 ```text
 {
+  "schemaVersion": 1,
+  "revision": Int,
   "alias": String,
+  "deviceModel": String?,
+  "deviceType": String,
   "localIps": [String],
   "server": {
     "running": Bool,
     "port": Int,
     "https": Bool
+  },
+  "discovery": {
+    "scanning": Bool
   },
   "devices": [
     {
@@ -136,27 +142,24 @@ Minimum first snapshot:
       "fingerprint": String,
       "deviceModel": String?,
       "deviceType": String,
-      "download": Bool
+      "download": Bool,
+      "isFavorite": Bool
     }
-  ],
-  "selectedFiles": [
-    {
-      "name": String,
-      "size": Int,
-      "fileType": String
-    }
-  ],
-  "sendSessions": [...],
-  "receiveSession": Object?
+  ]
 }
 ```
 
+Snapshots are revisioned, published serially, and deduplicated in Dart. Swift
+rejects unsupported schema versions and ignores stale revisions.
+
 ## Command Contract
 
-Initial Swift-to-Dart commands:
+Implemented Swift-to-Dart commands:
 
-- `nativeUiReady`
 - `refreshDevices`
+
+Planned commands for later milestones:
+
 - `pickFiles`
 - `sendToDevice`
 - `acceptReceive`
@@ -220,15 +223,24 @@ and strings.
 - MethodChannel snapshots must avoid large payloads, especially thumbnails and
   file bytes.
 
-## Near-Term Next Step
+## Current Progress
 
-Milestone 1 is now underway on macOS:
+Milestones 1 and 2 are implemented on macOS:
 
-1. Added static SwiftUI files under `app/macos/Runner/NativeUI`.
-2. Attached an `NSHostingController` to the main macOS window.
-3. Kept the Flutter runtime initialized behind the SwiftUI shell.
-4. Added a runtime fallback: set `LOCALSEND_NATIVE_UI=0` to skip the SwiftUI
-   shell and show the existing Flutter UI.
+1. The main window hosts the SwiftUI shell while the Flutter runtime remains
+   initialized behind it.
+2. `native-ui-channel` publishes live local/server/discovery/device snapshots
+   from Refena providers after runtime initialization.
+3. The Send page renders real nearby devices and can request a forced discovery
+   refresh from Dart. It also requests one initial refresh when the live device
+   list is empty and networking is available.
+4. The Receive page renders live local status. Milestone 1's fake transfer and
+   quick-save models and controls have been removed.
+5. Set `LOCALSEND_NATIVE_UI=0` to skip the SwiftUI shell and show the existing
+   Flutter UI.
+6. Dart unit tests cover snapshot mapping, revision publishing, deduplication,
+   and refresh commands. The macOS `RunnerTests` target covers snapshot decoding,
+   schema validation, revision ordering, and live state mapping.
 
-The next Milestone 1 task is verification: build the macOS Runner target and
-visually inspect the static shell.
+The next implementation step is Milestone 3: native file selection and a file
+queue snapshot, without starting a transfer yet.

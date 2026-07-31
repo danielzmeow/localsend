@@ -1,66 +1,130 @@
 import Foundation
 
+@MainActor
 final class NativeUiStore: ObservableObject {
     @Published var selectedSection: NativeSection? = .receive
-    @Published var receiveState: NativeReceiveState
+    @Published private(set) var snapshot: NativeUiSnapshot?
+    @Published private(set) var bridgeErrorMessage: String?
+    @Published private(set) var refreshErrorMessage: String?
+    @Published private(set) var isRefreshCommandRunning = false
 
-    init(receiveState: NativeReceiveState = .preview) {
-        self.receiveState = receiveState
+    private var latestRevision = 0
+    private var requestedInitialDeviceRefresh = false
+
+    init(snapshot: NativeUiSnapshot? = nil) {
+        self.snapshot = snapshot
+        latestRevision = snapshot?.revision ?? 0
     }
 
-    func updateReceiveState(_ receiveState: NativeReceiveState) {
-        self.receiveState = receiveState
+    var receiveState: NativeReceiveState? {
+        snapshot.map(NativeReceiveState.live)
     }
 
-    func setQuickSaveMode(_ mode: NativeQuickSaveMode) {
-        receiveState.quickSaveMode = mode
+    var devices: [NativeUiDeviceSnapshot] {
+        snapshot?.devices ?? []
     }
 
-    func acceptIncomingRequest() {
-        guard case let .incoming(request) = receiveState.activity else {
+    var localIps: [String] {
+        snapshot?.localIps ?? []
+    }
+
+    var isScanning: Bool {
+        isRefreshCommandRunning || snapshot?.discovery.scanning == true
+    }
+
+    var canRefreshDevices: Bool {
+        snapshot != nil && !localIps.isEmpty && !isScanning
+    }
+
+    func apply(snapshot: NativeUiSnapshot) {
+        guard snapshot.revision > latestRevision else {
             return
         }
-
-        receiveState.activity = .receiving(
-            NativeActiveReceiveTransfer(
-                sender: request.sender,
-                files: request.files,
-                currentFileName: request.files.first?.name ?? "Incoming file",
-                progress: 0.18,
-                savedAutomatically: false
-            )
-        )
+        latestRevision = snapshot.revision
+        self.snapshot = snapshot
+        bridgeErrorMessage = nil
     }
 
-    func declineIncomingRequest() {
-        receiveState.activity = .idle
+    func reportBridgeError(_ message: String) {
+        bridgeErrorMessage = message
     }
 
-    func cancelActiveTransfer() {
-        receiveState.activity = .idle
-    }
-
-    func completeActiveTransfer() {
-        guard case let .receiving(transfer) = receiveState.activity else {
+    func beginRefreshingDevices() {
+        guard !isRefreshCommandRunning else {
             return
         }
-
-        receiveState.activity = .completed(
-            NativeCompletedReceiveTransfer(
-                sender: transfer.sender,
-                files: transfer.files,
-                totalSize: "20.9 MB"
-            )
-        )
+        isRefreshCommandRunning = true
+        refreshErrorMessage = nil
     }
 
-    func dismissCompletedTransfer() {
-        receiveState.activity = .idle
+    func finishRefreshingDevices(errorMessage: String?) {
+        isRefreshCommandRunning = false
+        refreshErrorMessage = errorMessage
+    }
+
+    func requestInitialDeviceRefresh(using refresh: () -> Void) {
+        guard !requestedInitialDeviceRefresh,
+              snapshot != nil,
+              devices.isEmpty,
+              !localIps.isEmpty else {
+            return
+        }
+        requestedInitialDeviceRefresh = true
+        refresh()
+    }
+}
+
+extension NativeUiStore {
+    static var receivePreview: NativeUiStore {
+        NativeUiStore(snapshot: previewSnapshot())
+    }
+
+    static var noNetworkPreview: NativeUiStore {
+        NativeUiStore(snapshot: previewSnapshot(localIps: []))
+    }
+
+    static var sendPreview: NativeUiStore {
+        let store = NativeUiStore(
+            snapshot: previewSnapshot(devices: [
+                NativeUiDeviceSnapshot(
+                    id: "iphone",
+                    alias: "Daniel's iPhone",
+                    ip: "192.168.1.86",
+                    port: 53317,
+                    https: false,
+                    fingerprint: "preview",
+                    deviceModel: "iPhone 15 Pro",
+                    deviceType: "mobile",
+                    download: false,
+                    isFavorite: true
+                ),
+            ])
+        )
+        store.selectedSection = .send
+        return store
+    }
+
+    private static func previewSnapshot(
+        localIps: [String] = ["192.168.1.16"],
+        devices: [NativeUiDeviceSnapshot] = []
+    ) -> NativeUiSnapshot {
+        NativeUiSnapshot(
+            schemaVersion: NativeUiSnapshot.supportedSchemaVersion,
+            revision: 1,
+            alias: "Kind Cherry",
+            deviceModel: "MacBook Pro",
+            deviceType: "desktop",
+            localIps: localIps,
+            server: NativeUiServerSnapshot(running: true, port: 53317, https: false),
+            discovery: NativeUiDiscoverySnapshot(scanning: false),
+            devices: devices
+        )
     }
 }
 
 enum NativeSection: String, CaseIterable, Hashable, Identifiable {
     case receive = "Receive"
+    case send = "Send"
 
     var id: String { rawValue }
 
@@ -68,6 +132,8 @@ enum NativeSection: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .receive:
             return "tray.and.arrow.down.fill"
+        case .send:
+            return "paperplane.fill"
         }
     }
 }
