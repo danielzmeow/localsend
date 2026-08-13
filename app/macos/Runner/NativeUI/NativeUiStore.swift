@@ -7,6 +7,8 @@ final class NativeUiStore: ObservableObject {
     @Published private(set) var bridgeErrorMessage: String?
     @Published private(set) var refreshErrorMessage: String?
     @Published private(set) var isRefreshCommandRunning = false
+    @Published private(set) var selectionErrorMessage: String?
+    @Published private(set) var isSelectionCommandRunning = false
 
     private var latestRevision = 0
     private var requestedInitialDeviceRefresh = false
@@ -26,6 +28,22 @@ final class NativeUiStore: ObservableObject {
 
     var localIps: [String] {
         snapshot?.localIps ?? []
+    }
+
+    var selectedFiles: [NativeUiFileSnapshot] {
+        snapshot?.selectedFiles ?? []
+    }
+
+    var selectedFileCount: Int {
+        selectedFiles.count
+    }
+
+    var selectedFileSize: Int64 {
+        selectedFiles.reduce(0) { $0 + $1.size }
+    }
+
+    var formattedSelectedFileSize: String {
+        ByteCountFormatter.string(fromByteCount: selectedFileSize, countStyle: .file)
     }
 
     var isScanning: Bool {
@@ -60,6 +78,16 @@ final class NativeUiStore: ObservableObject {
     func finishRefreshingDevices(errorMessage: String?) {
         isRefreshCommandRunning = false
         refreshErrorMessage = errorMessage
+    }
+
+    func beginSelectionCommand() {
+        isSelectionCommandRunning = true
+        selectionErrorMessage = nil
+    }
+
+    func finishSelectionCommand(errorMessage: String?) {
+        isSelectionCommandRunning = false
+        selectionErrorMessage = errorMessage
     }
 
     func requestInitialDeviceRefresh(using refresh: () -> Void) {
@@ -117,7 +145,21 @@ extension NativeUiStore {
             localIps: localIps,
             server: NativeUiServerSnapshot(running: true, port: 53317, https: false),
             discovery: NativeUiDiscoverySnapshot(scanning: false),
-            devices: devices
+            devices: devices,
+            selectedFiles: [
+                NativeUiFileSnapshot(
+                    id: "photo",
+                    name: "IMG_4281.HEIC",
+                    size: 2_400_000,
+                    fileType: "image"
+                ),
+                NativeUiFileSnapshot(
+                    id: "notes",
+                    name: "Weekend Notes.md",
+                    size: 42_000,
+                    fileType: "text"
+                ),
+            ]
         )
     }
 }

@@ -114,11 +114,11 @@ Dart:
 The SwiftUI side should receive plain JSON-compatible snapshots. Avoid passing
 Dart objects, binary file contents, streams, or generated mapper objects.
 
-Version 1 snapshot:
+Version 2 snapshot:
 
 ```text
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "revision": Int,
   "alias": String,
   "deviceModel": String?,
@@ -145,6 +145,14 @@ Version 1 snapshot:
       "download": Bool,
       "isFavorite": Bool
     }
+  ],
+  "selectedFiles": [
+    {
+      "id": String,
+      "name": String,
+      "size": Int,
+      "fileType": String
+    }
   ]
 }
 ```
@@ -157,10 +165,12 @@ rejects unsupported schema versions and ignores stale revisions.
 Implemented Swift-to-Dart commands:
 
 - `refreshDevices`
+- `addFiles`
+- `removeFile`
+- `clearFiles`
 
 Planned commands for later milestones:
 
-- `pickFiles`
 - `sendToDevice`
 - `acceptReceive`
 - `declineReceive`
@@ -225,7 +235,7 @@ and strings.
 
 ## Current Progress
 
-Milestones 1 and 2 are implemented on macOS:
+Milestones 1 through 3 are implemented on macOS:
 
 1. The main window hosts the SwiftUI shell while the Flutter runtime remains
    initialized behind it.
@@ -241,6 +251,9 @@ Milestones 1 and 2 are implemented on macOS:
 6. Dart unit tests cover snapshot mapping, revision publishing, deduplication,
    and refresh commands. The macOS `RunnerTests` target covers snapshot decoding,
    schema validation, revision ordering, and live state mapping.
+7. The Send page uses the native macOS file importer, keeps security-scoped
+   access alive while Dart adds files to `selectedSendingFilesProvider`, and
+   renders the real queue with add, remove, and clear controls.
 
-The next implementation step is Milestone 3: native file selection and a file
-queue snapshot, without starting a transfer yet.
+The next implementation step is Milestone 4: extract a native-friendly send
+session that does not navigate to Flutter pages or present Flutter dialogs.

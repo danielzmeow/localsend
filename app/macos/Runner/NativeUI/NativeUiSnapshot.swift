@@ -1,7 +1,7 @@
 import Foundation
 
 struct NativeUiSnapshot: Decodable, Equatable {
-    static let supportedSchemaVersion = 1
+    static let supportedSchemaVersion = 2
 
     let schemaVersion: Int
     let revision: Int
@@ -12,6 +12,35 @@ struct NativeUiSnapshot: Decodable, Equatable {
     let server: NativeUiServerSnapshot
     let discovery: NativeUiDiscoverySnapshot
     let devices: [NativeUiDeviceSnapshot]
+    let selectedFiles: [NativeUiFileSnapshot]
+}
+
+struct NativeUiFileSnapshot: Decodable, Equatable, Identifiable {
+    let id: String
+    let name: String
+    let size: Int64
+    let fileType: String
+
+    var formattedSize: String {
+        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+
+    var symbolName: String {
+        switch fileType {
+        case "image":
+            return "photo"
+        case "video":
+            return "film"
+        case "pdf":
+            return "doc.richtext"
+        case "text":
+            return "doc.text"
+        case "apk":
+            return "shippingbox"
+        default:
+            return "doc"
+        }
+    }
 }
 
 struct NativeUiServerSnapshot: Decodable, Equatable {

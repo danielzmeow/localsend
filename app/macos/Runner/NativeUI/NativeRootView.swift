@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NativeRootView: View {
     @ObservedObject var store: NativeUiStore
-    let refreshDevices: () -> Void
+    let actions: NativeUiActions
 
     var body: some View {
         NavigationSplitView {
@@ -13,7 +13,7 @@ struct NativeRootView: View {
             case .receive:
                 NativeReceivePage(store: store)
             case .send:
-                NativeSendPage(store: store, refreshDevices: refreshDevices)
+                NativeSendPage(store: store, actions: actions)
             }
         }
         .frame(minWidth: 860, minHeight: 560)
@@ -21,6 +21,14 @@ struct NativeRootView: View {
 }
 
 #Preview {
-    NativeRootView(store: .sendPreview, refreshDevices: {})
+    NativeRootView(
+        store: .sendPreview,
+        actions: NativeUiActions(
+            refreshDevices: {},
+            addFiles: { _ in },
+            removeFile: { _ in },
+            clearFiles: {}
+        )
+    )
         .frame(width: 900, height: 640)
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,8 @@ import 'package:flutter/widgets.dart';
 import 'package:localsend_app/native_ui/native_ui_snapshot.dart';
 import 'package:localsend_app/provider/network/nearby_devices_provider.dart';
 import 'package:localsend_app/provider/network/scan_facade.dart';
+import 'package:localsend_app/provider/selection/selected_sending_files_provider.dart';
+import 'package:localsend_app/util/native/cross_file_converters.dart';
 import 'package:logging/logging.dart';
 import 'package:refena_flutter/refena_flutter.dart';
 
@@ -15,7 +18,8 @@ const nativeUiChannelName = 'native-ui-channel';
 final _logger = Logger('NativeUiBridge');
 final _nativeUiBridge = NativeUiBridge();
 
-typedef NativeUiMethodHandler = Future<Object?> Function(String method, Object? arguments);
+typedef NativeUiMethodHandler =
+    Future<Object?> Function(String method, Object? arguments);
 
 abstract interface class NativeUiChannel {
   void setMethodCallHandler(NativeUiMethodHandler? handler);
@@ -49,6 +53,9 @@ class NativeUiBridge {
 
   Future<void> _publishQueue = Future.value();
   Future<void> Function()? _refreshDevices;
+  Future<void> Function(List<String> paths)? _addFiles;
+  Future<void> Function(String id)? _removeFile;
+  Future<void> Function()? _clearFiles;
   Map<String, Object?>? _lastQueuedSnapshot;
   int _revision = 0;
   bool _started = false;
@@ -63,8 +70,14 @@ class NativeUiBridge {
   Future<void> start({
     required NativeUiSnapshot initialSnapshot,
     required Future<void> Function() refreshDevices,
+    Future<void> Function(List<String> paths)? addFiles,
+    Future<void> Function(String id)? removeFile,
+    Future<void> Function()? clearFiles,
   }) async {
     _refreshDevices = refreshDevices;
+    _addFiles = addFiles;
+    _removeFile = removeFile;
+    _clearFiles = clearFiles;
     _started = true;
     _nativeHandlerAvailable = true;
     _channel.setMethodCallHandler(_handleMethodCall);
@@ -77,13 +90,16 @@ class NativeUiBridge {
     }
 
     final comparableSnapshot = snapshot.toJson(revision: 0)..remove('revision');
-    if (!force && _lastQueuedSnapshot != null && _equality.equals(_lastQueuedSnapshot, comparableSnapshot)) {
+    if (!force &&
+        _lastQueuedSnapshot != null &&
+        _equality.equals(_lastQueuedSnapshot, comparableSnapshot)) {
       return _publishQueue;
     }
 
     _lastQueuedSnapshot = comparableSnapshot;
     final revision = ++_revision;
-    final payload = Map<String, Object?>.from(comparableSnapshot)..['revision'] = revision;
+    final payload = Map<String, Object?>.from(comparableSnapshot)
+      ..['revision'] = revision;
 
     _publishQueue = _publishQueue.then((_) async {
       try {
@@ -123,8 +139,55 @@ class NativeUiBridge {
             message: error.toString(),
           );
         }
+      case 'addFiles':
+        final addFiles = _addFiles;
+        final paths = switch (arguments) {
+          List<Object?> values => values.whereType<String>().toList(
+            growable: false,
+          ),
+          _ => const <String>[],
+        };
+        if (addFiles == null || paths.isEmpty) {
+          throw PlatformException(
+            code: 'invalid_file_selection',
+            message: 'Native UI did not provide any valid file paths.',
+          );
+        }
+        await _runSelectionCommand(() => addFiles(paths));
+        return null;
+      case 'removeFile':
+        final removeFile = _removeFile;
+        if (removeFile == null || arguments is! String) {
+          throw PlatformException(
+            code: 'invalid_file_id',
+            message: 'Native UI did not provide a valid file ID.',
+          );
+        }
+        await _runSelectionCommand(() => removeFile(arguments));
+        return null;
+      case 'clearFiles':
+        final clearFiles = _clearFiles;
+        if (clearFiles == null) {
+          throw PlatformException(
+            code: 'native_ui_not_ready',
+            message: 'Native UI bridge has not finished starting.',
+          );
+        }
+        await _runSelectionCommand(clearFiles);
+        return null;
       default:
         throw MissingPluginException('Unknown Native UI method: $method');
+    }
+  }
+
+  Future<void> _runSelectionCommand(Future<void> Function() command) async {
+    try {
+      await command();
+    } catch (error) {
+      throw PlatformException(
+        code: 'selection_failed',
+        message: error.toString(),
+      );
     }
   }
 }
@@ -135,6 +198,29 @@ Future<void> setupNativeUiBridge(Ref ref) async {
     refreshDevices: () async {
       ref.redux(nearbyDevicesProvider).dispatch(ClearFoundDevicesAction());
       await ref.global.dispatchAsync(StartSmartScan(forceLegacy: true));
+    },
+    addFiles: (paths) async {
+      await ref
+          .redux(selectedSendingFilesProvider)
+          .dispatchAsync(
+            AddFilesAction(
+              files: paths.map(File.new),
+              converter: CrossFileConverters.convertFile,
+            ),
+          );
+    },
+    removeFile: (id) async {
+      final snapshot = ref.read(nativeUiSnapshotProvider);
+      final index = snapshot.selectedFiles.indexWhere((file) => file.id == id);
+      if (index == -1) {
+        throw StateError('The selected file no longer exists.');
+      }
+      ref
+          .redux(selectedSendingFilesProvider)
+          .dispatch(RemoveSelectedFileAction(index));
+    },
+    clearFiles: () async {
+      ref.redux(selectedSendingFilesProvider).dispatch(ClearSelectionAction());
     },
   );
 }

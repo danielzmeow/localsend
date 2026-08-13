@@ -1,5 +1,7 @@
 import 'package:common/model/device.dart';
 import 'package:common/model/device_info_result.dart';
+import 'package:common/model/file_type.dart';
+import 'package:localsend_app/model/cross_file.dart';
 import 'package:localsend_app/model/persistence/favorite_device.dart';
 import 'package:localsend_app/model/state/nearby_devices_state.dart';
 import 'package:localsend_app/native_ui/native_ui_snapshot.dart';
@@ -36,20 +38,35 @@ void main() {
           alias: 'alpha',
         ),
       ],
+      selectedFiles: const [
+        CrossFile(
+          name: 'photo.jpg',
+          fileType: FileType.image,
+          size: 2048,
+          thumbnail: null,
+          asset: null,
+          path: '/tmp/photo.jpg',
+          bytes: null,
+          lastModified: null,
+          lastAccessed: null,
+        ),
+      ],
     );
 
     expect(snapshot.scanning, isTrue);
     expect(snapshot.devices.map((device) => device.alias), ['alpha', 'Zeta']);
 
     final json = snapshot.toJson(revision: 7);
-    expect(json['schemaVersion'], 1);
+    expect(json['schemaVersion'], 2);
     expect(json['revision'], 7);
-    expect(json['server'], {
-      'running': true,
-      'port': 53317,
-      'https': false,
-    });
+    expect(json['server'], {'running': true, 'port': 53317, 'https': false});
     expect((json['devices']! as List).first, containsPair('isFavorite', true));
+    expect((json['selectedFiles']! as List).single, {
+      'id': '/tmp/photo.jpg:2048:0',
+      'name': 'photo.jpg',
+      'size': 2048,
+      'fileType': 'image',
+    });
   });
 }
 

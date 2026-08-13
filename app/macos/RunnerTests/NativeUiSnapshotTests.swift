@@ -2,20 +2,22 @@ import XCTest
 @testable import LocalSend
 
 final class NativeUiSnapshotTests: XCTestCase {
-    func testDecoderAcceptsVersionOneSnapshot() throws {
+    func testDecoderAcceptsVersionTwoSnapshot() throws {
         let snapshot = try NativeUiSnapshotDecoder.decode(arguments: snapshotArguments(revision: 3))
 
         XCTAssertEqual(snapshot.revision, 3)
         XCTAssertEqual(snapshot.alias, "My Mac")
         XCTAssertEqual(snapshot.devices.first?.alias, "Phone")
         XCTAssertEqual(snapshot.devices.first?.symbolName, "iphone")
+        XCTAssertEqual(snapshot.selectedFiles.first?.name, "photo.jpg")
+        XCTAssertEqual(snapshot.selectedFiles.first?.formattedSize, "2 KB")
     }
 
     func testDecoderRejectsUnsupportedSchema() {
         XCTAssertThrowsError(
-            try NativeUiSnapshotDecoder.decode(arguments: snapshotArguments(schemaVersion: 2))
+            try NativeUiSnapshotDecoder.decode(arguments: snapshotArguments(schemaVersion: 3))
         ) { error in
-            guard case NativeUiSnapshotDecodingError.unsupportedSchemaVersion(2) = error else {
+            guard case NativeUiSnapshotDecodingError.unsupportedSchemaVersion(3) = error else {
                 return XCTFail("Unexpected error: \(error)")
             }
         }
@@ -36,6 +38,8 @@ final class NativeUiSnapshotTests: XCTestCase {
         XCTAssertEqual(store.receiveState?.localStatus.alias, "My Mac")
         XCTAssertEqual(store.devices.count, 1)
         XCTAssertTrue(store.canRefreshDevices)
+        XCTAssertEqual(store.selectedFileCount, 1)
+        XCTAssertEqual(store.selectedFileSize, 2048)
     }
 
     @MainActor
@@ -52,7 +56,7 @@ final class NativeUiSnapshotTests: XCTestCase {
     }
 
     private func snapshotArguments(
-        schemaVersion: Int = 1,
+        schemaVersion: Int = 2,
         revision: Int = 1,
         alias: String = "My Mac",
         devices: [[String: Any]]? = nil
@@ -77,6 +81,12 @@ final class NativeUiSnapshotTests: XCTestCase {
                 "deviceType": "mobile",
                 "download": false,
                 "isFavorite": true,
+            ]],
+            "selectedFiles": [[
+                "id": "photo-id",
+                "name": "photo.jpg",
+                "size": 2048,
+                "fileType": "image",
             ]],
         ]
     }
